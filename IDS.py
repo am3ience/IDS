@@ -27,7 +27,7 @@ from watchdog.events import FileSystemEventHandler
 def cronAdd(Attempts, Scantime, Timeban):
     checker = 0
 
-    # Convert back the times to seconds
+    # Convert the times to seconds
     Scantime = Scantime / 60
     Timeban = Timeban / 60
 
@@ -52,7 +52,7 @@ def cronAdd(Attempts, Scantime, Timeban):
     os.system('crontab /etc/crontab')
 
 
-#      Arguments all the parameters through arguments
+# Initialize all the parameters through arguments
 # -----------------------------------------------------------------------------------------
 def Arguments():
     parser = argparse.ArgumentParser()
@@ -80,10 +80,8 @@ def Arguments():
 
     return Attempts, Scantime, Timeban
 
-#      Function to convert the timestamp format of X:X:X to a format that is able
-#      to be operated on (multiplied, addition, etc.). This allows for easier time
-#      difference calculation to determine if the attempted logins are within the
-#      user specified time scan limit.
+# Convert the timestamp format of X:X:X to a format that is able
+# to be operated on.
 # -----------------------------------------------------------------------------------------
 def time_Convert(time):
     timeArray = time.split(':')
@@ -95,21 +93,20 @@ def time_Convert(time):
     totalTime = hours + minutes + seconds
     return totalTime
 
-#      Function to add the new timestamp of the event to the respective user's
-#      time stamp array
+# Add the new timestamp of the event to the respective user's
+# time stamp array
 # -----------------------------------------------------------------------------------------
 def add_timestamp(user, timeStamp):
     user.timeStampArray.append(timeStamp)
 
-#      Creates a new user based on each newly, unique logged IP address.
+# Creates a new user based on each new IP addresses
 # -----------------------------------------------------------------------------------------
 def make_User(ip, timeStampArray):
     user = User(ip, timeStampArray)
     return user
 
-#      Class to store "users" which are essentially different, unique hosts that
-#      attempt to connect to the machine with the IDS on it. It stores both IP and
-#      time stamp array of each attempt the user tries to log in.
+# Class to store "users". It stores both IP and
+# time stamp array of each attempt.
 # -----------------------------------------------------------------------------------------
 class User(object):
     ip = ""
@@ -119,10 +116,8 @@ class User(object):
         self.ip = ip
         self.timeStampArray = timeStampArray
 
-#     Function block the user through an IPtables command by their IP address, blocking
-#     the IP address completely - not just the port it was logged on. It calls the unblock
-#     method right afterwards with the Timeban as the thread sleep, allowing it to unblock
-#     IP after the ban time is over.
+# Block the user through an IPtables command by their IP address. It calls the
+# unblock method right afterwards with the Timeban as the thread sleep
 # -----------------------------------------------------------------------------------------
 def block_User(IP):
     global Timeban
@@ -138,7 +133,7 @@ def block_User(IP):
         threading.Timer(Timeban, unblock_User, [IP]).start()
 
 
-#      Function to remove the IPtables command that blocks that IP address.
+# Remove the IPtables command that blocks that IP
 # -----------------------------------------------------------------------------------------
 def unblock_User(IP):
     command = "/usr/sbin/iptables -D INPUT -s %s -j DROP" % IP
@@ -146,7 +141,7 @@ def unblock_User(IP):
     print ("User Time Ban Over - %s has been unbanned") % IP
 
 
-#     Main function
+# Main function
 # -----------------------------------------------------------------------------------------
 class MyHandler(FileSystemEventHandler):
     global incorrectAttempts
@@ -206,8 +201,7 @@ class MyHandler(FileSystemEventHandler):
                         print "%s's failed login attempts time stamps (%d total): %s " % (
                         user.ip, len(user.timeStampArray), user.timeStampArray)
 
-            # Empty the time stamp array if it already exists (essentially resetting the number of attempts the user
-            # from that IP can do)
+            # Empty the time stamp array if it already exists
             elif ("Accepted password for" in lastLine) or ("Accepted password for" in secondLastLine):
                 ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', secondLastLine)
                 for user in incorrectAttempts:
