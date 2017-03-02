@@ -64,7 +64,7 @@ def Arguments():
                         dest='time')
 
     parser.add_argument('-b', '--block', nargs=1,
-                        help='Time(min) to block the IP for before unblocking. Enter 0 for indefinite IP block',
+                        help='How long to block the IP (minutes). Enter 0 for indefinite IP block',
                         required=True, dest='block')
     args = parser.parse_args()
 
@@ -83,7 +83,7 @@ def Arguments():
 # Convert the timestamp format of X:X:X to a format that is able
 # to be operated on.
 # -----------------------------------------------------------------------------------------
-def time_Convert(time):
+def Convert_time(time):
     timeArray = time.split(':')
     hours = int(timeArray[0])
     hours = hours * 3600
@@ -101,7 +101,7 @@ def add_timestamp(user, timeStamp):
 
 # Creates a new user based on each new IP addresses
 # -----------------------------------------------------------------------------------------
-def make_User(ip, timeStampArray):
+def make_user(ip, timeStampArray):
     user = User(ip, timeStampArray)
     return user
 
@@ -119,7 +119,7 @@ class User(object):
 # Block the user through an IPtables command by their IP address. It calls the
 # unblock method right afterwards with the Timeban as the thread sleep
 # -----------------------------------------------------------------------------------------
-def block_User(IP):
+def Block_IP(IP):
     global Timeban
     # Convert Timeban back to minutes from seconds.
     Timebantemp = Timeban / 60
@@ -130,12 +130,12 @@ def block_User(IP):
     command = "/usr/sbin/iptables -A INPUT -s %s -j DROP" % IP
     os.system(command)
     if Timeban != 0:
-        threading.Timer(Timeban, unblock_User, [IP]).start()
+        threading.Timer(Timeban, unBlock_IP, [IP]).start()
 
 
 # Remove the IPtables command that blocks that IP
 # -----------------------------------------------------------------------------------------
-def unblock_User(IP):
+def unBlock_IP(IP):
     command = "/usr/sbin/iptables -D INPUT -s %s -j DROP" % IP
     os.system(command)
     print ("User Time Ban Over - %s has been unbanned") % IP
@@ -144,8 +144,8 @@ def unblock_User(IP):
 # Main function
 # -----------------------------------------------------------------------------------------
 class MyHandler(FileSystemEventHandler):
-    global incorrectAttempts
-    global bannedIps
+    global Badattempts
+    global BannedIP
     global Attempts
 
     def on_modified(self, event):
@@ -161,21 +161,21 @@ class MyHandler(FileSystemEventHandler):
                 ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
                 timeStamp = re.findall(r'\d{2}:\d{2}:\d{2}', lastLine)
 
-                if not incorrectAttempts:
-                    user = make_User(ip[0], timeStampArray)
+                if not Badattempts:
+                    user = make_user(ip[0], timeStampArray)
                     add_timestamp(user, timeStamp[0])
 
-                    incorrectAttempts.append(user)
+                    Badattempts.append(user)
                     print "%s's failed login attempts time stamps (%d total): %s " % (
                     user.ip, len(user.timeStampArray), user.timeStampArray)
 
                     if len(user.timeStampArray) >= Attempts:
                         IP = user.ip[0]
-                        block_User(IP)
+                        Block_IP(IP)
 
                 else:
                     isnewuser = 0
-                    for user in incorrectAttempts:
+                    for user in Badattempts:
                         if user.ip == ip[0]:
 
                             if timeStamp[0] not in user.timeStampArray:
@@ -187,31 +187,31 @@ class MyHandler(FileSystemEventHandler):
                                     arrayLength = len(user.timeStampArray)
                                     firstTimeStamp = user.timeStampArray[(arrayLength - Attempts)]
                                     lastTimeStamp = user.timeStampArray[(arrayLength - 1)]
-                                    firstTime = time_Convert(firstTimeStamp)
-                                    lastTime = time_Convert(lastTimeStamp)
+                                    firstTime = Convert_time(firstTimeStamp)
+                                    lastTime = Convert_time(lastTimeStamp)
                                     timeDifference = (lastTime - firstTime)
                                     if timeDifference <= Scantime:
                                         IP = str(user.ip)
-                                        block_User(IP)
+                                        Block_IP(IP)
 
                     if isnewuser == 0:
-                        user = make_User(ip[0], timeStampArray)
+                        user = make_user(ip[0], timeStampArray)
                         add_timestamp(user, timeStamp[0])
-                        incorrectAttempts.append(user)
+                        Badattempts.append(user)
                         print "%s's failed login attempts time stamps (%d total): %s " % (
                         user.ip, len(user.timeStampArray), user.timeStampArray)
 
             # Empty the time stamp array if it already exists
             elif ("Accepted password for" in lastLine) or ("Accepted password for" in secondLastLine):
                 ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', secondLastLine)
-                for user in incorrectAttempts:
+                for user in Badattempts:
                     if user.ip == ip[0]:
                         user.timeStampArray = []
 
             elif 'Accepted password for' in lastLine:
                 ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
-                if incorrectAttempts:
-                    for user in incorrectAttempts:
+                if Badattempts:
+                    for user in Badattempts:
                         if user.ip == ip[0]:
                             timeStampArray = []
 
@@ -225,8 +225,8 @@ if __name__ == "__main__":
     observer.schedule(event_handler, path='/var/log', recursive=False)
     observer.start()
 
-    incorrectAttempts = []
-    bannedIps = []
+    Badattempts = []
+    BannedIP = []
 
     try:
         while True:
