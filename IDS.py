@@ -57,23 +57,28 @@ def cronAdd(numberOfAttempts, timeScan, banTime):
 #      passed when the python script is executed through the terminal.
 # -----------------------------------------------------------------------------------------
 def Initialize():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--attempt', nargs=1, help='Max failed attempts before blocking the IP.',
-                        required=True, dest='attempt')
-    parser.add_argument('-t', '--time', nargs=1,
-                        help='Max time(min) window between attempts before blocking the IP.', required=True,
-                        dest='time')
-    parser.add_argument('-b', '--block', nargs=1,
-                        help='Time(min) to block the IP for before unblocking. Enter 0 for indefinite IP block',
-                        required=True, dest='block')
-    args = parser.parse_args()
-    numberOfAttempts = int(args.attempt[0])
+    #parser = argparse.ArgumentParser()
+    #parser.add_argument('-a', '--attempt', nargs=1, help='Max failed attempts before blocking the IP.',
+    #                    required=True, dest='attempt')
+    attempts = int(raw_input("Max failed attempts before blocking the IP: "))
+    #parser.add_argument('-t', '--time', nargs=1,
+    #                    help='Max time(min) window between attempts before blocking the IP.', required=True,
+    #                    dest='time')
+    time = int(raw_input("Max time(min) window between attempts before blocking the IP: "))
+    #parser.add_argument('-b', '--block', nargs=1,
+    #                    help='Time(min) to block the IP for before unblocking. Enter 0 for indefinite IP block',
+    #                    required=True, dest='block')
+    #args = parser.parse_args()
+    block = int(raw_input("Time(min) to block the IP for before unblocking. Enter 0 for indefinite IP block: "))
+
+    #numberOfAttempts = int(args.attempt[0])
+    numberOfAttempts = attempts
 
     # Multiply the numbers by 60 to convert the minutes to seconds
-    timeScan = int(args.time[0])
+    timeScan = time
     timeScan = timeScan * 60
 
-    banTime = int(args.block[0])
+    banTime = block
     banTime = banTime * 60
 
     return numberOfAttempts, timeScan, banTime
