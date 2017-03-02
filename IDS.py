@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -----------------------------------------------------------------------------
 # FUNCTION:       IDS
 #
@@ -10,7 +11,6 @@
 # NOTES: simple monitor application that will detect
 #        password guessing attempts against SSH and block that IP using Netfilter.
 #
-
 # ----------------------------------------------------------------------------*/
 
 import time
@@ -22,20 +22,19 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 # Adds this program as a crontab job
-# The function will also check the /etc/crontab file and check if the same command already exists,
-# If it does, then it doesn't add a new cron job. It will also assign the crontab file in
+# will check the /etc/crontab file and check if the same command already exists
 # -----------------------------------------------------------------------------------------
-def cronAdd(numberOfAttempts, timeScan, banTime):
+def cronAdd(Attempts, Scantime, Timeban):
     checker = 0
 
-    # Convert back the times to seconds - essentially the original command passed in terminal
-    timeScan = timeScan / 60
-    banTime = banTime / 60
+    # Convert back the times to seconds
+    Scantime = Scantime / 60
+    Timeban = Timeban / 60
 
     filepath = os.path.dirname(os.path.realpath(__file__))
     filename = os.path.basename(__file__)
     cronJob = '@reboot /usr/bin/python %s/%s -a %s -t %s -b %s' % (
-    filepath, filename, numberOfAttempts, timeScan, banTime)
+    filepath, filename, Attempts, Scantime, Timeban)
     with open('/etc/crontab', 'r') as crontab:
         for line in crontab:
             if cronJob not in line:
@@ -47,94 +46,39 @@ def cronAdd(numberOfAttempts, timeScan, banTime):
         crontab = open('/etc/crontab', 'a')
         crontab.seek(0, 2)
         command = '@reboot /usr/bin/python %s/%s -a %s -t %s -b %s' % (
-        filepath, filename, numberOfAttempts, timeScan, banTime)
+        filepath, filename, Attempts, Scantime, Timeban)
         crontab.write(command)
         crontab.close()
     os.system('crontab /etc/crontab')
 
 
-#      Function to initialize all the parameters and user specified variables through arguments
-#      passed when the python script is executed through the terminal.
+#      Arguments all the parameters through arguments
 # -----------------------------------------------------------------------------------------
-def Initialize():
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument('-a', '--attempt', nargs=1, help='Max failed attempts before blocking the IP.',
-    #                    required=True, dest='attempt')
-    attempts = int(raw_input("Max failed attempts before blocking the IP: "))
-    #parser.add_argument('-t', '--time', nargs=1,
-    #                    help='Max time(min) window between attempts before blocking the IP.', required=True,
-    #                    dest='time')
-    time = int(raw_input("Max time(min) window between attempts before blocking the IP: "))
-    #parser.add_argument('-b', '--block', nargs=1,
-    #                    help='Time(min) to block the IP for before unblocking. Enter 0 for indefinite IP block',
-    #                    required=True, dest='block')
-    #args = parser.parse_args()
-    block = int(raw_input("Time(min) to block the IP for before unblocking. Enter 0 for indefinite IP block: "))
+def Arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-a', '--attempt', nargs=1, help='Max failed attempts before blocking the IP.',
+                        required=True, dest='attempt')
 
-    #numberOfAttempts = int(args.attempt[0])
-    numberOfAttempts = attempts
+    parser.add_argument('-t', '--time', nargs=1,
+                        help='Max time(min) window between attempts before blocking the IP.', required=True,
+                        dest='time')
+
+    parser.add_argument('-b', '--block', nargs=1,
+                        help='Time(min) to block the IP for before unblocking. Enter 0 for indefinite IP block',
+                        required=True, dest='block')
+    args = parser.parse_args()
+
+
+    Attempts = int(args.attempt[0])
 
     # Multiply the numbers by 60 to convert the minutes to seconds
-    timeScan = time
-    timeScan = timeScan * 60
+    Scantime = int(args.time[0])
+    Scantime = Scantime * 60
 
-    banTime = block
-    banTime = banTime * 60
+    Timeban = int(args.block[0])
+    Timeban = Timeban * 60
 
-    return numberOfAttempts, timeScan, banTime
-
-
-#      Class to store "users" which are essentially different, unique hosts that
-#      attempt to connect to the machine with the IDS on it. It stores both IP and
-#      time stamp array of each attempt the user tries to log in.
-# -----------------------------------------------------------------------------------------
-class User(object):
-    ip = ""
-    timeStampArray = []
-
-    def __init__(self, ip, timeStampArray):
-        self.ip = ip
-        self.timeStampArray = timeStampArray
-
-
-#      Creates a new user based on each newly, unique logged IP address.
-# -----------------------------------------------------------------------------------------
-def make_User(ip, timeStampArray):
-    user = User(ip, timeStampArray)
-    return user
-
-#      Function to add the new timestamp of the event to the respective user's
-#      time stamp array
-# -----------------------------------------------------------------------------------------
-def add_timestamp(user, timeStamp):
-    user.timeStampArray.append(timeStamp)
-
-#     Function block the user through an IPtables command by their IP address, blocking
-#     the IP address completely - not just the port it was logged on. It calls the unblock
-#     method right afterwards with the banTime as the thread sleep, allowing it to unblock
-#     IP after the ban time is over.
-# -----------------------------------------------------------------------------------------
-def block_User(IPADDRESS):
-    global banTime
-    # Convert banTime back to minutes from seconds.
-    banTimeTemp = banTime / 60
-    if banTime != 0:
-        print "%s has been banned for %d minutes." % (IPADDRESS, banTimeTemp)
-    else:
-        print "%s has been banned forever." % IPADDRESS
-    command = "/usr/sbin/iptables -A INPUT -s %s -j DROP" % IPADDRESS
-    os.system(command)
-    if banTime != 0:
-        threading.Timer(banTime, unblock_User, [IPADDRESS]).start()
-
-
-#      Function to remove the IPtables command that blocks that IP address.
-# -----------------------------------------------------------------------------------------
-def unblock_User(IPADDRESS):
-    command = "/usr/sbin/iptables -D INPUT -s %s -j DROP" % IPADDRESS
-    os.system(command)
-    print ("User Time Ban Over - %s has been unbanned") % IPADDRESS
-
+    return Attempts, Scantime, Timeban
 
 #      Function to convert the timestamp format of X:X:X to a format that is able
 #      to be operated on (multiplied, addition, etc.). This allows for easier time
@@ -151,11 +95,63 @@ def time_Convert(time):
     totalTime = hours + minutes + seconds
     return totalTime
 
+#      Function to add the new timestamp of the event to the respective user's
+#      time stamp array
+# -----------------------------------------------------------------------------------------
+def add_timestamp(user, timeStamp):
+    user.timeStampArray.append(timeStamp)
 
+#      Creates a new user based on each newly, unique logged IP address.
+# -----------------------------------------------------------------------------------------
+def make_User(ip, timeStampArray):
+    user = User(ip, timeStampArray)
+    return user
+
+#      Class to store "users" which are essentially different, unique hosts that
+#      attempt to connect to the machine with the IDS on it. It stores both IP and
+#      time stamp array of each attempt the user tries to log in.
+# -----------------------------------------------------------------------------------------
+class User(object):
+    ip = ""
+    timeStampArray = []
+
+    def __init__(self, ip, timeStampArray):
+        self.ip = ip
+        self.timeStampArray = timeStampArray
+
+#     Function block the user through an IPtables command by their IP address, blocking
+#     the IP address completely - not just the port it was logged on. It calls the unblock
+#     method right afterwards with the Timeban as the thread sleep, allowing it to unblock
+#     IP after the ban time is over.
+# -----------------------------------------------------------------------------------------
+def block_User(IP):
+    global Timeban
+    # Convert Timeban back to minutes from seconds.
+    Timebantemp = Timeban / 60
+    if Timeban != 0:
+        print "%s has been banned for %d minutes." % (IP, Timebantemp)
+    else:
+        print "%s has been banned forever." % IP
+    command = "/usr/sbin/iptables -A INPUT -s %s -j DROP" % IP
+    os.system(command)
+    if Timeban != 0:
+        threading.Timer(Timeban, unblock_User, [IP]).start()
+
+
+#      Function to remove the IPtables command that blocks that IP address.
+# -----------------------------------------------------------------------------------------
+def unblock_User(IP):
+    command = "/usr/sbin/iptables -D INPUT -s %s -j DROP" % IP
+    os.system(command)
+    print ("User Time Ban Over - %s has been unbanned") % IP
+
+
+#     Main function
+# -----------------------------------------------------------------------------------------
 class MyHandler(FileSystemEventHandler):
     global incorrectAttempts
     global bannedIps
-    global numberOfAttempts
+    global Attempts
 
     def on_modified(self, event):
 
@@ -178,9 +174,9 @@ class MyHandler(FileSystemEventHandler):
                     print "%s's failed login attempts time stamps (%d total): %s " % (
                     user.ip, len(user.timeStampArray), user.timeStampArray)
 
-                    if len(user.timeStampArray) >= numberOfAttempts:
-                        IPADDRESS = user.ip[0]
-                        block_User(IPADDRESS)
+                    if len(user.timeStampArray) >= Attempts:
+                        IP = user.ip[0]
+                        block_User(IP)
 
                 else:
                     isnewuser = 0
@@ -192,16 +188,16 @@ class MyHandler(FileSystemEventHandler):
                                 print "%s's failed login attempts time stamps (%d total): %s " % (
                                 user.ip, len(user.timeStampArray), user.timeStampArray)
                                 isnewuser = 1
-                                if len(user.timeStampArray) >= numberOfAttempts:
+                                if len(user.timeStampArray) >= Attempts:
                                     arrayLength = len(user.timeStampArray)
-                                    firstTimeStamp = user.timeStampArray[(arrayLength - numberOfAttempts)]
+                                    firstTimeStamp = user.timeStampArray[(arrayLength - Attempts)]
                                     lastTimeStamp = user.timeStampArray[(arrayLength - 1)]
                                     firstTime = time_Convert(firstTimeStamp)
                                     lastTime = time_Convert(lastTimeStamp)
                                     timeDifference = (lastTime - firstTime)
-                                    if timeDifference <= timeScan:
-                                        IPADDRESS = str(user.ip)
-                                        block_User(IPADDRESS)
+                                    if timeDifference <= Scantime:
+                                        IP = str(user.ip)
+                                        block_User(IP)
 
                     if isnewuser == 0:
                         user = make_User(ip[0], timeStampArray)
@@ -227,8 +223,8 @@ class MyHandler(FileSystemEventHandler):
 
 
 if __name__ == "__main__":
-    numberOfAttempts, timeScan, banTime = Initialize()
-    cronAdd(numberOfAttempts, timeScan, banTime)
+    Attempts, Scantime, Timeban = Arguments()
+    cronAdd(Attempts, Scantime, Timeban)
     event_handler = MyHandler()
 
     observer = Observer()
