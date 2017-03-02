@@ -25,7 +25,7 @@ from watchdog.events import FileSystemEventHandler
 # The function will also check the /etc/crontab file and check if the same command already exists,
 # If it does, then it doesn't add a new cron job. It will also assign the crontab file in
 # -----------------------------------------------------------------------------------------
-def cronJob(numberOfAttempts, timeScan, banTime):
+def cronAdd(numberOfAttempts, timeScan, banTime):
     checker = 0
 
     # Convert back the times to seconds - essentially the original command passed in terminal
@@ -56,23 +56,26 @@ def cronJob(numberOfAttempts, timeScan, banTime):
 #      Function to initialize all the parameters and user specified variables through arguments
 #      passed when the python script is executed through the terminal.
 # -----------------------------------------------------------------------------------------
-def initializeParameters():
+def Initialize():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--attempt', nargs=1, help='Number of failed attempts before blocking the IP.',
+    parser.add_argument('-a', '--attempt', nargs=1, help='Max failed attempts before blocking the IP.',
                         required=True, dest='attempt')
     parser.add_argument('-t', '--time', nargs=1,
-                        help='Max time in minutes for the number of attempts in that time window before blocking '
-                        'the IP.', required=True, dest='time')
+                        help='Max time(min) window between attempts before blocking the IP.', required=True,
+                        dest='time')
     parser.add_argument('-b', '--block', nargs=1,
-                        help='Time in minutes to block the IP for before unblocking. Enter 0 for indefinite IP block',
+                        help='Time(min) to block the IP for before unblocking. Enter 0 for indefinite IP block',
                         required=True, dest='block')
     args = parser.parse_args()
     numberOfAttempts = int(args.attempt[0])
+
     # Multiply the numbers by 60 to convert the minutes to seconds
     timeScan = int(args.time[0])
     timeScan = timeScan * 60
+
     banTime = int(args.block[0])
     banTime = banTime * 60
+
     return numberOfAttempts, timeScan, banTime
 
 
@@ -102,8 +105,8 @@ def add_timestamp(user, timeStamp):
     user.timeStampArray.append(timeStamp)
 
 #     Function block the user through an IPtables command by their IP address, blocking
-#      the IP address completely - not just the port it was logged on. It calls the unblock
-#      method right afterwards with the banTime as the thread sleep, allowing it to unblock
+#     the IP address completely - not just the port it was logged on. It calls the unblock
+#     method right afterwards with the banTime as the thread sleep, allowing it to unblock
 #     IP after the ban time is over.
 # -----------------------------------------------------------------------------------------
 def block_User(IPADDRESS):
@@ -137,14 +140,10 @@ def time_Convert(time):
     timeArray = time.split(':')
     hours = int(timeArray[0])
     hours = hours * 3600
-    # print "TIME_CONVERT HOURS: %d" % hours
     minutes = int(timeArray[1])
     minutes = minutes * 60
-    # print "TIME_CONVERT MINUTES: %d" % minutes
     seconds = int(timeArray[2])
-    # print "TIME_CONVERT SECONDS: %d" % seconds
     totalTime = hours + minutes + seconds
-    # print "TIME_CONVERT TOTAL TIME: %d" % totalTime
     return totalTime
 
 
@@ -171,7 +170,6 @@ class MyHandler(FileSystemEventHandler):
                     add_timestamp(user, timeStamp[0])
 
                     incorrectAttempts.append(user)
-                    # print "Added New User"
                     print "%s's failed login attempts time stamps (%d total): %s " % (
                     user.ip, len(user.timeStampArray), user.timeStampArray)
 
@@ -185,13 +183,10 @@ class MyHandler(FileSystemEventHandler):
                         if user.ip == ip[0]:
 
                             if timeStamp[0] not in user.timeStampArray:
-                                # print "User already exists, adding time stamp"
                                 add_timestamp(user, timeStamp[0])
                                 print "%s's failed login attempts time stamps (%d total): %s " % (
                                 user.ip, len(user.timeStampArray), user.timeStampArray)
                                 isnewuser = 1
-                                # print "Length of array: %d" % len(user.timeStampArray)
-                                # print "Number of attempts before it is banned: %d" % numberOfAttempts
                                 if len(user.timeStampArray) >= numberOfAttempts:
                                     arrayLength = len(user.timeStampArray)
                                     firstTimeStamp = user.timeStampArray[(arrayLength - numberOfAttempts)]
@@ -199,16 +194,11 @@ class MyHandler(FileSystemEventHandler):
                                     firstTime = time_Convert(firstTimeStamp)
                                     lastTime = time_Convert(lastTimeStamp)
                                     timeDifference = (lastTime - firstTime)
-                                    # print "Time difference: %d" % timeDifference
-                                    # print "Max time to scan before blocking IP: %d" % timeScan
                                     if timeDifference <= timeScan:
-                                        # IPADDRESS = ip_toString(user.ip)
-                                        # print "USER IP: %s" % user.ip
                                         IPADDRESS = str(user.ip)
                                         block_User(IPADDRESS)
 
                     if isnewuser == 0:
-                        # print "Added New User"
                         user = make_User(ip[0], timeStampArray)
                         add_timestamp(user, timeStamp[0])
                         incorrectAttempts.append(user)
@@ -219,16 +209,12 @@ class MyHandler(FileSystemEventHandler):
             # from that IP can do)
             elif ("Accepted password for" in lastLine) or ("Accepted password for" in secondLastLine):
                 ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', secondLastLine)
-                # timeStamp = re.findall(r'\d{2}:\d{2}:\d{2}', lastLine)
-                # print "Successful Login From: %s" % (ip)
                 for user in incorrectAttempts:
                     if user.ip == ip[0]:
                         user.timeStampArray = []
 
             elif 'Accepted password for' in lastLine:
                 ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
-                # timeStamp = re.findall(r'\d{2}:\d{2}:\d{2}', lastLine)
-
                 if incorrectAttempts:
                     for user in incorrectAttempts:
                         if user.ip == ip[0]:
@@ -236,14 +222,17 @@ class MyHandler(FileSystemEventHandler):
 
 
 if __name__ == "__main__":
-    numberOfAttempts, timeScan, banTime = initializeParameters()
-    cronJob(numberOfAttempts, timeScan, banTime)
+    numberOfAttempts, timeScan, banTime = Initialize()
+    cronAdd(numberOfAttempts, timeScan, banTime)
     event_handler = MyHandler()
+
     observer = Observer()
     observer.schedule(event_handler, path='/var/log', recursive=False)
     observer.start()
+
     incorrectAttempts = []
     bannedIps = []
+
     try:
         while True:
             time.sleep(0.01)
