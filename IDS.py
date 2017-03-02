@@ -9,7 +9,7 @@
 # PROGRAMMERS:    Paul Cabanez, Justin Chau
 #
 # NOTES: simple monitor application that will detect
-#        password guessing attempts against SSH and block that IP using Netfilter.
+#        password guessing attempts against SSH and block that IPaddr using Netfilter.
 #
 # ----------------------------------------------------------------------------*/
 
@@ -56,22 +56,22 @@ def cronAdd(Attempts, Scantime, Timeban):
 # -----------------------------------------------------------------------------------------
 def Arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--attempt', nargs=1, help='Max failed attempts before blocking the IP.',
+    parser.add_argument('-a', '--attempt', nargs=1, help='Max failed attempts before blocking the IPaddr.',
                         required=True, dest='attempt')
 
     parser.add_argument('-t', '--time', nargs=1,
-                        help='Max time(min) window between attempts before blocking the IP.', required=True,
+                        help='Max time(min) window between attempts before blocking the IPaddr.', required=True,
                         dest='time')
 
     parser.add_argument('-b', '--block', nargs=1,
-                        help='How long to block the IP (minutes). Enter 0 for indefinite IP block',
+                        help='How long to block the IPaddr (minutes). Enter 0 for indefinite IPaddr block',
                         required=True, dest='block')
     args = parser.parse_args()
 
 
     Attempts = int(args.attempt[0])
 
-    # Multiply the numbers by 60 to convert the minutes to seconds
+    # MultIPaddrly the numbers by 60 to convert the minutes to seconds
     Scantime = int(args.time[0])
     Scantime = Scantime * 60
 
@@ -99,53 +99,53 @@ def Convert_time(time):
 def add_timestamp(user, timeStamp):
     user.timeStampArray.append(timeStamp)
 
-# Creates a new user based on each new IP addresses
+# Creates a new user based on each new IPaddr addresses
 # -----------------------------------------------------------------------------------------
-def make_user(ip, timeStampArray):
-    user = User(ip, timeStampArray)
+def make_user(IPaddr, timeStampArray):
+    user = User(IPaddr, timeStampArray)
     return user
 
-# Class to store "users". It stores both IP and
+# Class to store "users". It stores both IPaddr and
 # time stamp array of each attempt.
 # -----------------------------------------------------------------------------------------
 class User(object):
-    ip = ""
+    IPaddr = ""
     timeStampArray = []
 
-    def __init__(self, ip, timeStampArray):
-        self.ip = ip
+    def __init__(self, IPaddr, timeStampArray):
+        self.IPaddr = IPaddr
         self.timeStampArray = timeStampArray
 
-# Block the user through an IPtables command by their IP address. It calls the
+# Block the user through an IPaddrtables command by their IPaddr address. It calls the
 # unblock method right afterwards with the Timeban as the thread sleep
 # -----------------------------------------------------------------------------------------
-def Block_IP(IP):
+def Block_IPaddr(IPaddr):
     global Timeban
     # Convert Timeban back to minutes from seconds.
     Timebantemp = Timeban / 60
     if Timeban != 0:
-        print "%s has been banned for %d minute(s)." % (IP, Timebantemp)
+        print "%s has been banned for %d minute(s)." % (IPaddr, Timebantemp)
     else:
-        print "%s has been banned forever." % IP
-    command = "/usr/sbin/iptables -A INPUT -s %s -j DROP" % IP
+        print "%s has been banned forever." % IPaddr
+    command = "/usr/sbin/IPaddrtables -A INPUT -s %s -j DROP" % IPaddr
     os.system(command)
     if Timeban != 0:
-        threading.Timer(Timeban, unBlock_IP, [IP]).start()
+        threading.Timer(Timeban, unBlock_IPaddr, [IPaddr]).start()
 
 
-# Remove the IPtables command that blocks that IP
+# Remove the IPaddrtables command that blocks that IPaddr
 # -----------------------------------------------------------------------------------------
-def unBlock_IP(IP):
-    command = "/usr/sbin/iptables -D INPUT -s %s -j DROP" % IP
+def unBlock_IPaddr(IPaddr):
+    command = "/usr/sbin/IPaddrtables -D INPUT -s %s -j DROP" % IPaddr
     os.system(command)
-    print ("User time ban over, %s has been unbanned") % IP
+    print ("User time ban over, %s has been unbanned") % IPaddr
 
 
 # Main function
 # -----------------------------------------------------------------------------------------
 class Handler(FileSystemEventHandler):
     global Badattempt
-    global BannedIP
+    global BannedIPaddr
     global Attempts
 
     def on_modified(self, event):
@@ -157,24 +157,24 @@ class Handler(FileSystemEventHandler):
 
             if "Failed password for" in lastLine:
                 timeStampArray = []
-                ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
+                IPaddr = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
                 timeStamp = re.findall(r'\d{2}:\d{2}:\d{2}', lastLine)
                 if not Badattempt:
-                    user = make_user(ip[0], timeStampArray)
+                    user = make_user(IPaddr[0], timeStampArray)
                     add_timestamp(user, timeStamp[0])
                     Badattempt.append(user)
-                    print "%s failed login attempt" % (user.ip)
+                    print((user.IPaddr) + " failed login attempt")
                     # if user goes over the attempts max, block
                     if len(user.timeStampArray) >= Attempts:
-                        IP = user.ip[0]
-                        Block_IP(IP)
+                        IPaddr = user.IPaddr[0]
+                        Block_IPaddr(IPaddr)
                 else:
                     isnewuser = 0
                     for user in Badattempt:
-                        if user.ip == ip[0]:
+                        if user.IPaddr == IPaddr[0]:
                             if timeStamp[0] not in user.timeStampArray:
                                 add_timestamp(user, timeStamp[0])
-                                print "%s failed login attempt" % (user.ip)
+                                print((user.IPaddr) + " failed login attempt")
                                 isnewuser = 1
                                 if len(user.timeStampArray) >= Attempts:
                                     arrayLength = len(user.timeStampArray)
@@ -184,24 +184,24 @@ class Handler(FileSystemEventHandler):
                                     lastTime = Convert_time(lastTimeStamp)
                                     timeDifference = (lastTime - firstTime)
                                     if timeDifference <= Scantime:
-                                        IP = str(user.ip)
-                                        Block_IP(IP)
+                                        IPaddr = str(user.IPaddr)
+                                        Block_IPaddr(IPaddr)
                     if isnewuser == 0:
-                        user = make_user(ip[0], timeStampArray)
+                        user = make_user(IPaddr[0], timeStampArray)
                         add_timestamp(user, timeStamp[0])
                         Badattempt.append(user)
-                        print "%s failed login attempt" % (user.ip)
+                        print((user.IPaddr) + " failed login attempt")
             # Empty the time stamp array if it already exists
             elif ("Accepted password for" in lastLine) or ("Accepted password for" in secondLastLine):
-                ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', secondLastLine)
+                IPaddr = re.findall(r'[0-9]+(?:\.[0-9]+){3}', secondLastLine)
                 for user in Badattempt:
-                    if user.ip == ip[0]:
+                    if user.IPaddr == IPaddr[0]:
                         user.timeStampArray = []
             elif 'Accepted password for' in lastLine:
-                ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
+                IPaddr = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
                 if Badattempt:
                     for user in Badattempt:
-                        if user.ip == ip[0]:
+                        if user.IPaddr == IPaddr[0]:
                             timeStampArray = []
 
 
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     observer.start()
 
     Badattempt = []
-    BannedIP = []
+    BannedIPaddr = []
 
     try:
         while True:
