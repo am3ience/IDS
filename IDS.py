@@ -124,7 +124,7 @@ def Block_IP(IP):
     # Convert Timeban back to minutes from seconds.
     Timebantemp = Timeban / 60
     if Timeban != 0:
-        print "%s has been banned for %d minutes." % (IP, Timebantemp)
+        print "%s has been banned for %d minute(s)." % (IP, Timebantemp)
     else:
         print "%s has been banned forever." % IP
     command = "/usr/sbin/iptables -A INPUT -s %s -j DROP" % IP
@@ -138,18 +138,17 @@ def Block_IP(IP):
 def unBlock_IP(IP):
     command = "/usr/sbin/iptables -D INPUT -s %s -j DROP" % IP
     os.system(command)
-    print ("User Time Ban Over - %s has been unbanned") % IP
+    print ("User time ban over, %s has been unbanned") % IP
 
 
 # Main function
 # -----------------------------------------------------------------------------------------
-class MyHandler(FileSystemEventHandler):
-    global Badattempts
+class Handler(FileSystemEventHandler):
+    global Badattempt
     global BannedIP
     global Attempts
 
     def on_modified(self, event):
-
         if event.src_path == "/var/log/secure":
             fileHandle = open('/var/log/secure')
             lineList = fileHandle.readlines()
@@ -160,28 +159,22 @@ class MyHandler(FileSystemEventHandler):
                 timeStampArray = []
                 ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
                 timeStamp = re.findall(r'\d{2}:\d{2}:\d{2}', lastLine)
-
-                if not Badattempts:
+                if not Badattempt:
                     user = make_user(ip[0], timeStampArray)
                     add_timestamp(user, timeStamp[0])
-
-                    Badattempts.append(user)
-                    print "%s's failed login attempts time stamps (%d total): %s " % (
-                    user.ip, len(user.timeStampArray), user.timeStampArray)
-
+                    Badattempt.append(user)
+                    print "%s failed login attempt" % (user.ip)
+                    # if user goes over the attempts max, block
                     if len(user.timeStampArray) >= Attempts:
                         IP = user.ip[0]
                         Block_IP(IP)
-
                 else:
                     isnewuser = 0
-                    for user in Badattempts:
+                    for user in Badattempt:
                         if user.ip == ip[0]:
-
                             if timeStamp[0] not in user.timeStampArray:
                                 add_timestamp(user, timeStamp[0])
-                                print "%s's failed login attempts time stamps (%d total): %s " % (
-                                user.ip, len(user.timeStampArray), user.timeStampArray)
+                                print "%s failed login attempt" % (user.ip)
                                 isnewuser = 1
                                 if len(user.timeStampArray) >= Attempts:
                                     arrayLength = len(user.timeStampArray)
@@ -193,25 +186,21 @@ class MyHandler(FileSystemEventHandler):
                                     if timeDifference <= Scantime:
                                         IP = str(user.ip)
                                         Block_IP(IP)
-
                     if isnewuser == 0:
                         user = make_user(ip[0], timeStampArray)
                         add_timestamp(user, timeStamp[0])
-                        Badattempts.append(user)
-                        print "%s's failed login attempts time stamps (%d total): %s " % (
-                        user.ip, len(user.timeStampArray), user.timeStampArray)
-
+                        Badattempt.append(user)
+                        print "%s failed login attempt" % (user.ip)
             # Empty the time stamp array if it already exists
             elif ("Accepted password for" in lastLine) or ("Accepted password for" in secondLastLine):
                 ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', secondLastLine)
-                for user in Badattempts:
+                for user in Badattempt:
                     if user.ip == ip[0]:
                         user.timeStampArray = []
-
             elif 'Accepted password for' in lastLine:
                 ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
-                if Badattempts:
-                    for user in Badattempts:
+                if Badattempt:
+                    for user in Badattempt:
                         if user.ip == ip[0]:
                             timeStampArray = []
 
@@ -219,13 +208,13 @@ class MyHandler(FileSystemEventHandler):
 if __name__ == "__main__":
     Attempts, Scantime, Timeban = Arguments()
     cronAdd(Attempts, Scantime, Timeban)
-    event_handler = MyHandler()
+    event_handler = Handler()
 
     observer = Observer()
     observer.schedule(event_handler, path='/var/log', recursive=False)
     observer.start()
 
-    Badattempts = []
+    Badattempt = []
     BannedIP = []
 
     try:
