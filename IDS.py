@@ -145,7 +145,7 @@ def unBlock_IPaddr(IPaddr):
 # -----------------------------------------------------------------------------------------
 class Handler(FileSystemEventHandler):
     global Badattempt
-    global BannedIPaddr
+    #global BannedIPaddr
     global Attempts
 
     def on_modified(self, event):
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     observer.start()
 
     Badattempt = []
-    BannedIPaddr = []
+    #BannedIPaddr = []
 
     try:
         while True:
