@@ -33,8 +33,8 @@ def cronAdd(Attempts, Scantime, Timeban):
 
     filepath = os.path.dirname(os.path.realpath(__file__))
     filename = os.path.basename(__file__)
-    cronJob = '@reboot /usr/bin/python %s/%s -t %s -a %s -b %s' % (
-    filepath, filename, Attempts, Scantime, Timeban)
+    cronJob = '@reboot root python %s/%s -t %s -a %s -b %s' % (
+    filepath, filename, Scantime, Attempts, Timeban)
     with open('/etc/crontab', 'r') as crontab:
         for line in crontab:
             if cronJob not in line:
@@ -45,8 +45,8 @@ def cronAdd(Attempts, Scantime, Timeban):
     if checker == 0:
         crontab = open('/etc/crontab', 'a')
         crontab.seek(0, 2)
-        command = '@reboot /usr/bin/python %s/%s -t %s -a %s -b %s' % (
-        filepath, filename, Attempts, Scantime, Timeban)
+        command = '@reboot root python %s/%s -t %s -a %s -b %s' % (
+        filepath, filename, Scantime, Attempts, Timeban)
         crontab.write(command)
         crontab.close()
     os.system('crontab /etc/crontab')
