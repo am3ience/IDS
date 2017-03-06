@@ -154,7 +154,13 @@ class Handler(FileSystemEventHandler):
             lineList = fileHandle.readlines()
             lastLine = lineList[len(lineList) - 1]
             secondLastLine = lineList[len(lineList) - 2]
+            thirdLastLine = lineList[len(lineList) - 3]
+            fourthLastLine = lineList[len(lineList) - 4]
 
+            if "more authentication failures" in lastLine:
+                lastLine = thirdLastLine
+                secondLastLine = fourthLastLine
+            #print(lastLine)
             if "Failed password for" in lastLine:
                 timeStampArray = []
                 IPaddr = re.findall(r'[0-9]+(?:\.[0-9]+){3}', lastLine)
@@ -163,7 +169,7 @@ class Handler(FileSystemEventHandler):
                     user = make_user(IPaddr[0], timeStampArray)
                     add_timestamp(user, timeStamp[0])
                     Badattempt.append(user)
-                    print((user.IPaddr) + " failed login attempt")
+                    #print((user.IPaddr) + " failed login attempt")
                     # if user goes over the attempts max, block
                     if len(user.timeStampArray) >= Attempts:
                         IPaddr = user.IPaddr[0]
@@ -174,7 +180,7 @@ class Handler(FileSystemEventHandler):
                         if user.IPaddr == IPaddr[0]:
                             if timeStamp[0] not in user.timeStampArray:
                                 add_timestamp(user, timeStamp[0])
-                                print((user.IPaddr) + " failed login attempt")
+                                #print((user.IPaddr) + " failed login attempt")
                                 isnewuser = 1
                                 if len(user.timeStampArray) >= Attempts:
                                     arrayLength = len(user.timeStampArray)
@@ -190,7 +196,7 @@ class Handler(FileSystemEventHandler):
                         user = make_user(IPaddr[0], timeStampArray)
                         add_timestamp(user, timeStamp[0])
                         Badattempt.append(user)
-                        print((user.IPaddr) + " failed login attempt")
+                        #print((user.IPaddr) + " failed login attempt")
             # Empty the time stamp array if it already exists
             elif ("Accepted password for" in lastLine) or ("Accepted password for" in secondLastLine):
                 IPaddr = re.findall(r'[0-9]+(?:\.[0-9]+){3}', secondLastLine)
