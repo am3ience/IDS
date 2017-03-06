@@ -33,7 +33,7 @@ def cronAdd(Attempts, Scantime, Timeban):
 
     filepath = os.path.dirname(os.path.realpath(__file__))
     filename = os.path.basename(__file__)
-    cronJob = '@reboot /usr/bin/python %s/%s -a %s -t %s -b %s' % (
+    cronJob = '@reboot /usr/bin/python %s/%s -t %s -a %s -b %s' % (
     filepath, filename, Attempts, Scantime, Timeban)
     with open('/etc/crontab', 'r') as crontab:
         for line in crontab:
@@ -45,7 +45,7 @@ def cronAdd(Attempts, Scantime, Timeban):
     if checker == 0:
         crontab = open('/etc/crontab', 'a')
         crontab.seek(0, 2)
-        command = '@reboot /usr/bin/python %s/%s -a %s -t %s -b %s' % (
+        command = '@reboot /usr/bin/python %s/%s -t %s -a %s -b %s' % (
         filepath, filename, Attempts, Scantime, Timeban)
         crontab.write(command)
         crontab.close()
@@ -56,12 +56,13 @@ def cronAdd(Attempts, Scantime, Timeban):
 # -----------------------------------------------------------------------------------------
 def Arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--attempt', nargs=1, help='Max failed attempts before blocking the IPaddr.',
-                        required=True, dest='attempt')
 
     parser.add_argument('-t', '--time', nargs=1,
                         help='Max time(min) window between attempts before blocking the IPaddr.', required=True,
                         dest='time')
+
+    parser.add_argument('-a', '--attempt', nargs=1, help='Max failed attempts before blocking the IPaddr.',
+                        required=True, dest='attempt')
 
     parser.add_argument('-b', '--block', nargs=1,
                         help='How long to block the IPaddr (minutes). Enter 0 for indefinite IPaddr block',
@@ -127,7 +128,7 @@ def Block_IPaddr(IPaddr):
         print "%s has been banned for %d minute(s)." % (IPaddr, Timebantemp)
     else:
         print "%s has been banned forever." % IPaddr
-    command = "/usr/sbin/IPaddrtables -A INPUT -s %s -j DROP" % IPaddr
+    command = "iptables -A INPUT -s %s -j DROP" % IPaddr
     os.system(command)
     if Timeban != 0:
         threading.Timer(Timeban, unBlock_IPaddr, [IPaddr]).start()
@@ -136,7 +137,7 @@ def Block_IPaddr(IPaddr):
 # Remove the IPaddrtables command that blocks that IPaddr
 # -----------------------------------------------------------------------------------------
 def unBlock_IPaddr(IPaddr):
-    command = "/usr/sbin/IPaddrtables -D INPUT -s %s -j DROP" % IPaddr
+    command = "iptables -D INPUT -s %s -j DROP" % IPaddr
     os.system(command)
     print ("User time ban over, %s has been unbanned") % IPaddr
 
@@ -145,7 +146,6 @@ def unBlock_IPaddr(IPaddr):
 # -----------------------------------------------------------------------------------------
 class Handler(FileSystemEventHandler):
     global Badattempt
-    #global BannedIPaddr
     global Attempts
 
     def on_modified(self, event):
@@ -215,7 +215,6 @@ if __name__ == "__main__":
     observer.start()
 
     Badattempt = []
-    #BannedIPaddr = []
 
     try:
         while True:
