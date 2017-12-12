@@ -1,2 +1,2 @@
 # IDS
-To design, implement and test a simple monitor application that will detect password guessing attempts against a service and block that IP using Netfilter.
+simple monitor application that will detect password guessing attempts against SSH and block that IP address using Netfilter.
